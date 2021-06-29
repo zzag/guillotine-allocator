@@ -16,7 +16,7 @@ class AllocatorPrivate;
 /**
  * \internal
  */
-struct AllocationId
+struct Q_DECL_EXPORT AllocationId
 {
     static constexpr AllocationId null() noexcept { return -1; }
 
@@ -39,7 +39,7 @@ struct AllocationId
  * The Allocation type represents a single 2D allocation. The isNull() function
  * returns \c true if the allocation is invalid.
  */
-struct Allocation
+struct Q_DECL_EXPORT Allocation
 {
     bool isNull() const { return id == AllocationId::null(); }
 
@@ -51,7 +51,7 @@ struct Allocation
 /**
  * The AllocatorOptions provide a way to fine tune the behavior of the allocator.
  */
-struct AllocatorOptions
+struct Q_DECL_EXPORT AllocatorOptions
 {
     bool allowTranspose = true;
 };
@@ -62,7 +62,7 @@ struct AllocatorOptions
  * If the allocator  has failed to find a suitable area for the specified texture size, a null
  * Allocation object will be returned.
  */
-class Allocator
+class Q_DECL_EXPORT Allocator
 {
 public:
     explicit Allocator(const QSize &size, const AllocatorOptions &options = {});
