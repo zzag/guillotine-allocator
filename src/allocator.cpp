@@ -14,7 +14,7 @@
 namespace KGuillotineAllocator
 {
 
-struct Node
+struct AllocationNode
 {
     enum class Kind {
         Fork,
@@ -45,25 +45,25 @@ public:
     AllocationId allocateNode();
     void releaseNode(AllocationId nodeId);
 
-    QVector<Node> nodes;
+    QVector<AllocationNode> nodes;
     QSize size;
 };
 
 AllocationId AllocatorPrivate::allocateNode()
 {
     for (int i = 0; i < nodes.count(); ++i) {
-        if (nodes[i].status == Node::Status::Deleted) {
+        if (nodes[i].status == AllocationNode::Status::Deleted) {
             return AllocationId(i);
         }
     }
 
-    nodes.append(Node{});
+    nodes.append(AllocationNode{});
     return nodes.count() - 1;
 }
 
 void AllocatorPrivate::releaseNode(AllocationId nodeId)
 {
-    nodes[nodeId].status = Node::Status::Deleted;
+    nodes[nodeId].status = AllocationNode::Status::Deleted;
 }
 
 Allocator::Allocator(const QSize &size)
@@ -71,14 +71,14 @@ Allocator::Allocator(const QSize &size)
 {
     d->size = size;
 
-    d->nodes.append(Node{
+    d->nodes.append(AllocationNode{
         .prevSibling = AllocationId::null(),
         .nextSibling = AllocationId::null(),
         .parent = AllocationId::null(),
         .orientation = Qt::Horizontal,
         .rect = QRect(QPoint(0, 0), size),
-        .kind = Node::Kind::Leaf,
-        .status = Node::Status::Free,
+        .kind = AllocationNode::Kind::Leaf,
+        .status = AllocationNode::Status::Free,
     });
 }
 
@@ -97,8 +97,8 @@ AllocationId AllocatorPrivate::selectFreeNode(const QSize &size) const
     int bestScore = std::numeric_limits<int>::max();
 
     for (int nodeId = 0; nodeId < nodes.count(); ++nodeId) {
-        if (nodes[nodeId].status != Node::Status::Free ||
-                nodes[nodeId].kind != Node::Kind::Leaf) {
+        if (nodes[nodeId].status != AllocationNode::Status::Free ||
+                nodes[nodeId].kind != AllocationNode::Kind::Leaf) {
             continue;
         }
 
@@ -166,7 +166,7 @@ Allocation Allocator::allocate(const QSize &requestedSize)
     }
 
     if (d->nodes[selectedId].rect.size() == requestedSize) {
-        d->nodes[selectedId].status = Node::Status::Occupied;
+        d->nodes[selectedId].status = AllocationNode::Status::Occupied;
         return Allocation{.rect = d->nodes[selectedId].rect, .id = selectedId,};
     }
 
@@ -180,47 +180,47 @@ Allocation Allocator::allocate(const QSize &requestedSize)
     const AllocationId splitId =
             !splitRect.isEmpty() ? d->allocateNode() : AllocationId::null();
 
-    d->nodes[selectedId].kind = Node::Kind::Fork;
+    d->nodes[selectedId].kind = AllocationNode::Kind::Fork;
 
     const Qt::Orientation childOrientation = flipOrientation(d->nodes[selectedId].orientation);
-    d->nodes[allocatedId] = Node{
+    d->nodes[allocatedId] = AllocationNode{
         .prevSibling = AllocationId::null(),
         .nextSibling = leftoverId,
         .parent = selectedId,
 
         .orientation = childOrientation,
         .rect = allocatedRect,
-        .kind = Node::Kind::Leaf,
-        .status = Node::Status::Occupied,
+        .kind = AllocationNode::Kind::Leaf,
+        .status = AllocationNode::Status::Occupied,
     };
 
     // If the requested rectangle perfectly fits the bin, i.e. there is no leftover,
     // avoid creating the leftover node.
     if (leftoverId != AllocationId::null()) {
-        d->nodes[leftoverId] = Node{
+        d->nodes[leftoverId] = AllocationNode{
             .prevSibling = allocatedId,
             .nextSibling = AllocationId::null(),
             .parent = selectedId,
 
             .orientation = childOrientation,
             .rect = leftoverRect,
-            .kind = Node::Kind::Leaf,
-            .status = Node::Status::Free,
+            .kind = AllocationNode::Kind::Leaf,
+            .status = AllocationNode::Status::Free,
         };
     }
 
     // Avoid creating the split node if its area is empty, the leftover rect can still
     // be valid though. Note that the split node is a sibling of the parent node.
     if (splitId != AllocationId::null()) {
-        d->nodes[splitId] = Node{
+        d->nodes[splitId] = AllocationNode{
             .prevSibling = selectedId,
             .nextSibling = d->nodes[selectedId].nextSibling,
             .parent = d->nodes[selectedId].parent,
 
             .orientation = d->nodes[selectedId].orientation,
             .rect = splitRect,
-            .kind = Node::Kind::Leaf,
-            .status = Node::Status::Free,
+            .kind = AllocationNode::Kind::Leaf,
+            .status = AllocationNode::Status::Free,
         };
         d->nodes[selectedId].nextSibling = splitId;
     }
@@ -230,15 +230,15 @@ Allocation Allocator::allocate(const QSize &requestedSize)
 
 void Allocator::deallocate(AllocationId nodeId)
 {
-    d->nodes[nodeId].status = Node::Status::Free;
+    d->nodes[nodeId].status = AllocationNode::Status::Free;
 
     while (true) {
         // Merge the node with the next (free) sibling nodes. Note that the sibling nodes are
         // sorted along the axis where they had been split.
         while (d->nodes[nodeId].nextSibling != AllocationId::null()) {
             const AllocationId nextSibling = d->nodes[nodeId].nextSibling;
-            if (d->nodes[nextSibling].kind != Node::Kind::Leaf ||
-                    d->nodes[nextSibling].status != Node::Status::Free) {
+            if (d->nodes[nextSibling].kind != AllocationNode::Kind::Leaf ||
+                    d->nodes[nextSibling].status != AllocationNode::Status::Free) {
                 break;
             }
 
@@ -257,8 +257,8 @@ void Allocator::deallocate(AllocationId nodeId)
         // sorted along the axis where they had been split.
         while (d->nodes[nodeId].prevSibling != AllocationId::null()) {
             const AllocationId prevSibling = d->nodes[nodeId].prevSibling;
-            if (d->nodes[prevSibling].kind != Node::Kind::Leaf ||
-                    d->nodes[prevSibling].status != Node::Status::Free) {
+            if (d->nodes[prevSibling].kind != AllocationNode::Kind::Leaf ||
+                    d->nodes[prevSibling].status != AllocationNode::Status::Free) {
                 break;
             }
 
@@ -284,8 +284,8 @@ void Allocator::deallocate(AllocationId nodeId)
         // node can be merged with one of its siblings.
         const AllocationId parentId = d->nodes[nodeId].parent;
         d->nodes[parentId].rect = d->nodes[nodeId].rect;
-        d->nodes[parentId].kind = Node::Kind::Leaf;
-        d->nodes[parentId].status = Node::Status::Free;
+        d->nodes[parentId].kind = AllocationNode::Kind::Leaf;
+        d->nodes[parentId].status = AllocationNode::Status::Free;
 
         d->releaseNode(nodeId);
         nodeId = parentId;
