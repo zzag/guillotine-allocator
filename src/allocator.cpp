@@ -40,13 +40,14 @@ struct AllocationNode
 class AllocatorPrivate
 {
 public:
-    AllocationId selectFreeNode(const QSize &size) const;
+    std::tuple<AllocationId, bool> selectFreeNode(const QSize &size) const;
 
     AllocationId allocateNode();
     void releaseNode(AllocationId nodeId);
 
     QVector<AllocationNode> nodes;
     QSize size;
+    AllocatorOptions options;
 };
 
 AllocationId AllocatorPrivate::allocateNode()
@@ -66,10 +67,11 @@ void AllocatorPrivate::releaseNode(AllocationId nodeId)
     nodes[nodeId].status = AllocationNode::Status::Deleted;
 }
 
-Allocator::Allocator(const QSize &size)
+Allocator::Allocator(const QSize &size, const AllocatorOptions &options)
     : d(new AllocatorPrivate)
 {
     d->size = size;
+    d->options = options;
 
     d->nodes.append(AllocationNode{
         .prevSibling = AllocationId::null(),
@@ -91,32 +93,51 @@ QSize Allocator::size() const
     return d->size;
 }
 
-AllocationId AllocatorPrivate::selectFreeNode(const QSize &size) const
+std::tuple<AllocationId, bool> AllocatorPrivate::selectFreeNode(const QSize &size) const
 {
     int bestCandidate = AllocationId::null();
     int bestScore = std::numeric_limits<int>::max();
+    bool bestTransposed = false;
 
     for (int nodeId = 0; nodeId < nodes.count(); ++nodeId) {
         if (nodes[nodeId].status != AllocationNode::Status::Free ||
                 nodes[nodeId].kind != AllocationNode::Kind::Leaf) {
             continue;
         }
-
         const QSize availableSize = nodes[nodeId].rect.size();
+
         const int xDelta = availableSize.width() - size.width();
         const int yDelta = availableSize.height() - size.height();
-
-        if (xDelta < 0 || yDelta < 0) {
-            continue;
+        if (xDelta >= 0 && yDelta >= 0) {
+            if (xDelta == 0 && yDelta == 0) {
+                return {nodeId, false};
+            }
+            const int score = std::min(xDelta, yDelta);
+            if (score < bestScore) {
+                bestCandidate = nodeId;
+                bestScore = score;
+                bestTransposed = false;
+            }
         }
 
-        const int score = std::min(xDelta, yDelta);
-        if (score < bestScore) {
-            bestCandidate = nodeId;
-            bestScore = score;
+        if (options.allowTranspose) {
+            const int xDelta = availableSize.width() - size.height();
+            const int yDelta = availableSize.height() - size.width();
+            if (xDelta >= 0 && yDelta >= 0) {
+                if (xDelta == 0 && yDelta == 0) {
+                    return {nodeId, true};
+                }
+                const int score = std::min(xDelta, yDelta);
+                if (score < bestScore) {
+                    bestCandidate = nodeId;
+                    bestScore = score;
+                    bestTransposed = true;
+                }
+            }
         }
     }
-    return bestCandidate;
+
+    return {bestCandidate, bestTransposed};
 }
 
 static Qt::Orientation flipOrientation(Qt::Orientation orientation)
@@ -160,18 +181,23 @@ Allocation Allocator::allocate(const QSize &requestedSize)
         return Allocation{};
     }
 
-    const AllocationId selectedId = d->selectFreeNode(requestedSize);
+    const auto [selectedId, transposed] = d->selectFreeNode(requestedSize);
     if (selectedId == AllocationId::null()) {
         return Allocation{};
     }
 
-    if (d->nodes[selectedId].rect.size() == requestedSize) {
+    const QSize adjustedSize = transposed ? requestedSize.transposed() : requestedSize;
+    if (d->nodes[selectedId].rect.size() == adjustedSize) {
         d->nodes[selectedId].status = AllocationNode::Status::Occupied;
-        return Allocation{.rect = d->nodes[selectedId].rect, .id = selectedId,};
+        return Allocation{
+            .rect = d->nodes[selectedId].rect,
+            .id = selectedId,
+            .transposed = transposed,
+        };
     }
 
     const auto [allocatedRect, leftoverRect, splitRect] =
-            guillotine(d->nodes[selectedId].rect, requestedSize, d->nodes[selectedId].orientation);
+            guillotine(d->nodes[selectedId].rect, adjustedSize, d->nodes[selectedId].orientation);
 
     // Note that some rectangles can be empty, avoid creating nodes for these rects.
     const AllocationId allocatedId = d->allocateNode();
@@ -225,7 +251,11 @@ Allocation Allocator::allocate(const QSize &requestedSize)
         d->nodes[selectedId].nextSibling = splitId;
     }
 
-    return Allocation{.rect = allocatedRect, .id = allocatedId,};
+    return Allocation{
+        .rect = allocatedRect,
+        .id = allocatedId,
+        .transposed = transposed,
+    };
 }
 
 void Allocator::deallocate(AllocationId nodeId)

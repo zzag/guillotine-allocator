@@ -45,6 +45,15 @@ struct Allocation
 
     QRect rect;
     AllocationId id = AllocationId::null();
+    bool transposed;
+};
+
+/**
+ * The AllocatorOptions provide a way to fine tune the behavior of the allocator.
+ */
+struct AllocatorOptions
+{
+    bool allowTranspose = true;
 };
 
 /**
@@ -56,7 +65,7 @@ struct Allocation
 class Allocator
 {
 public:
-    explicit Allocator(const QSize &size);
+    explicit Allocator(const QSize &size, const AllocatorOptions &options = {});
     ~Allocator();
 
     QSize size() const;
