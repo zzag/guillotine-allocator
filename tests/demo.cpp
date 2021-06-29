@@ -10,7 +10,7 @@
 #include <QRandomGenerator>
 #include <QWidget>
 
-#include "allocator.h"
+#include "kguillotineallocator.h"
 
 class Window : public QWidget
 {
