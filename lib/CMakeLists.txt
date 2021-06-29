@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2021 Vlad Zahorodnii <vlad.zahorodnii@kde.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
 set(allocatorlib_SOURCES
     kguillotineallocator.cpp
 )
