@@ -53,11 +53,13 @@ struct Q_DECL_EXPORT Allocation
  */
 enum class AllocationMethod {
     /**
-     * Allocate items in a way that minimizes the remaning width of item bins.
+     * Allocate items in a way that minimizes the remaning width of item bins. The allocator
+     * will tend to stack items horizontally.
      */
     PreferLessHorizontalSpace,
     /**
-     * Allocate items in a way that minimizes the remaining height of item bins.
+     * Allocate items in a way that minimizes the remaining height of item bins. The allocator
+     * will tend to stack items vertically.
      */
     PreferLessVerticalSpace,
 };
