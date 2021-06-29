@@ -45,6 +45,8 @@ public:
     AllocationId allocateNode();
     void releaseNode(AllocationId nodeId);
 
+    int computeScore(int xDelta, int yDelta) const;
+
     QVector<AllocationNode> nodes;
     QSize size;
     AllocatorOptions options;
@@ -93,6 +95,18 @@ QSize Allocator::size() const
     return d->size;
 }
 
+int AllocatorPrivate::computeScore(int xDelta, int yDelta) const
+{
+    switch (options.method) {
+    case AllocationMethod::PreferLessHorizontalSpace:
+        return xDelta;
+    case AllocationMethod::PreferLessVerticalSpace:
+        return yDelta;
+    default:
+        Q_UNREACHABLE();
+    }
+}
+
 std::tuple<AllocationId, bool> AllocatorPrivate::selectFreeNode(const QSize &size) const
 {
     int bestCandidate = AllocationId::null();
@@ -112,7 +126,7 @@ std::tuple<AllocationId, bool> AllocatorPrivate::selectFreeNode(const QSize &siz
             if (xDelta == 0 && yDelta == 0) {
                 return {nodeId, false};
             }
-            const int score = xDelta; //std::min(xDelta, yDelta);
+            const int score = computeScore(xDelta, yDelta);
             if (score < bestScore) {
                 bestCandidate = nodeId;
                 bestScore = score;
@@ -127,7 +141,7 @@ std::tuple<AllocationId, bool> AllocatorPrivate::selectFreeNode(const QSize &siz
                 if (xDelta == 0 && yDelta == 0) {
                     return {nodeId, true};
                 }
-                const int score = xDelta; // std::min(xDelta, yDelta);
+                const int score = computeScore(xDelta, yDelta);
                 if (score < bestScore) {
                     bestCandidate = nodeId;
                     bestScore = score;

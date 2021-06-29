@@ -49,10 +49,25 @@ struct Q_DECL_EXPORT Allocation
 };
 
 /**
+ * This enum type is used to specify how the allocator should place items.
+ */
+enum class AllocationMethod {
+    /**
+     * Allocate items in a way that minimizes the remaning width of item bins.
+     */
+    PreferLessHorizontalSpace,
+    /**
+     * Allocate items in a way that minimizes the remaining height of item bins.
+     */
+    PreferLessVerticalSpace,
+};
+
+/**
  * The AllocatorOptions provide a way to fine tune the behavior of the allocator.
  */
 struct Q_DECL_EXPORT AllocatorOptions
 {
+    AllocationMethod method = AllocationMethod::PreferLessHorizontalSpace;
     bool allowTranspose = true;
 };
 
