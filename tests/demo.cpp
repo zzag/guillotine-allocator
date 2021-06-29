@@ -58,10 +58,29 @@ private:
         static QVector<Box> boxes;
         if (boxes.isEmpty()) {
             const QVector<QSize> desiredSizes {
-                QSize(100, 40),
-                QSize(60, 300),
-                QSize(250, 270),
-                QSize(300, 20),
+                QSize(400, 25),
+                QSize(5, 300),
+                QSize(400, 5),
+                QSize(5, 300),
+
+                QSize(500, 25),
+                QSize(5, 330),
+                QSize(500, 5),
+                QSize(5, 330),
+
+                QSize(600, 25),
+                QSize(5, 500),
+                QSize(600, 5),
+                QSize(5, 500),
+
+                QSize(530, 25),
+                QSize(5, 330),
+                QSize(530, 5),
+                QSize(5, 330),
+                // QSize(100, 40),
+                // QSize(60, 300),
+                // QSize(250, 270),
+                // QSize(300, 20),
             };
 
             QRandomGenerator *rng = QRandomGenerator::global();

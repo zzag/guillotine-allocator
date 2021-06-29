@@ -112,7 +112,7 @@ std::tuple<AllocationId, bool> AllocatorPrivate::selectFreeNode(const QSize &siz
             if (xDelta == 0 && yDelta == 0) {
                 return {nodeId, false};
             }
-            const int score = std::min(xDelta, yDelta);
+            const int score = xDelta; //std::min(xDelta, yDelta);
             if (score < bestScore) {
                 bestCandidate = nodeId;
                 bestScore = score;
@@ -127,7 +127,7 @@ std::tuple<AllocationId, bool> AllocatorPrivate::selectFreeNode(const QSize &siz
                 if (xDelta == 0 && yDelta == 0) {
                     return {nodeId, true};
                 }
-                const int score = std::min(xDelta, yDelta);
+                const int score = xDelta; // std::min(xDelta, yDelta);
                 if (score < bestScore) {
                     bestCandidate = nodeId;
                     bestScore = score;
